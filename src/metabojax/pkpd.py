@@ -24,3 +24,21 @@ class PKPDParams(eqx.Module):
             hill=jnp.asarray(1.0), # hill coefficient
         )
 
+
+class PKPDState(eqx.Module):
+    """Latent PK state: subcutaneous depot (mg) and plasma C (mg/L)."""
+
+    depot: Float[Array, ""]
+    concentration: Float[Array, ""]
+
+    @classmethod
+    def zeros(cls) -> PKPDState:
+        return cls(depot=jnp.asarray(0.0), concentration=jnp.asarray(0.0))
+
+    def as_vector(self) -> Float[Array, "2"]:
+        return jnp.stack([self.depot, self.concentration])
+
+    @classmethod
+    def from_vector(cls, y: Float[Array, "2"]) -> PKPDState:
+        return cls(depot=y[0], concentration=y[1])
+

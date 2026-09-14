@@ -59,13 +59,6 @@ class PKPDState(eqx.Module):
     def zeros(cls) -> PKPDState:
         return cls(depot=jnp.asarray(0.0), concentration=jnp.asarray(0.0))
 
-    def as_vector(self) -> Float[Array, "2"]:
-        return jnp.stack([self.depot, self.concentration])
-
-    @classmethod
-    def from_vector(cls, y: Float[Array, "2"]) -> PKPDState:
-        return cls(depot=y[0], concentration=y[1])
-
 
 def pk_vector_field(
     t: Float[Array, ""],
@@ -74,10 +67,9 @@ def pk_vector_field(
 ) -> Float[Array, "2"]:
     """Right-hand side of the 1-compartment first-order absorption ODE."""
     del t
-    depot, concentration = y[0], y[1]
-    d_depot = -args.k_a * depot
-    d_concentration = -args.k_e * concentration + args.k_a * depot / args.v_d
-    return jnp.stack([d_depot, d_concentration])
+    d_depot = -args.k_a * y.depot
+    d_concentration = -args.k_e * y.concentration + (args.k_a * y.depot / args.v_d)
+    return PKPDState(depot=d_depot, concentration=d_concentration)
 
 
 def emax_pd(concentration: Float[Array, ""], params: PKPDParams) -> Float[Array, ""]:
@@ -105,7 +97,7 @@ def integrate_pk(
 ) -> PKPDState:
     """Integrate PK from ``t0`` to ``t1`` with Dopri5 (no Python time loop)."""
     term = diffrax.ODETerm(pk_vector_field)
-    solver = diffrax.Dopri5()
+    solver = diffrax.Tsit5()
     sol = diffrax.diffeqsolve(
         term,
         solver,
